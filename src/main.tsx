@@ -10,7 +10,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Offline support when served as a normal site (not inside sandboxed frames).
-if ('serviceWorker' in navigator && location.protocol === 'https:' && !import.meta.env.DEV && import.meta.env.MODE !== 'single') {
+if ('serviceWorker' in navigator && window.isSecureContext && !import.meta.env.DEV && import.meta.env.MODE !== 'single') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
