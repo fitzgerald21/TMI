@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SceneCanvas } from '../visual/SceneCanvas';
 import { newControl, breathsFromLog } from '../visual/scene';
 import { SCAN_REGIONS, type Script } from './script';
-import { bell, bells, chime, tick, unlockAudio, setVolume } from '../lib/audio';
+import { bell, bells, chime, tick, unlockAudio, releaseAudio, setVolume } from '../lib/audio';
 import { speak, hush, configureVoice, primeVoice } from '../lib/voice';
 import { addSession, uid, useStore, updateSettings, type SessionRecord } from '../lib/store';
 import { Prep, type PrepResult } from './Prep';
@@ -38,6 +38,7 @@ export function Session({ script, onExit }: { script: Script; onExit: () => void
     return () => {
       document.body.classList.remove('in-session');
       hush();
+      releaseAudio();
     };
   }, []);
 

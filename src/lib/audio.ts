@@ -8,7 +8,44 @@ export function setVolume(v: number) {
   if (master) master.gain.value = v;
 }
 
+// iOS Safari plays Web Audio on the "ambient" channel, which the ring/silent switch mutes, while
+// still showing the tab as playing sound. Asking for the "playback" channel (like music and video)
+// makes bells and voice audible in silent mode. Safari 16.4+ exposes navigator.audioSession; older
+// versions switch channel when an <audio> element is playing, so we also loop a silent clip.
+let keepAlive: HTMLAudioElement | null = null;
+
+function silentWavUrl(): string {
+  const rate = 8000, samples = rate / 2; // half a second of 8-bit silence
+  const buf = new ArrayBuffer(44 + samples);
+  const v = new DataView(buf);
+  const str = (o: number, t: string) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples, true); str(8, 'WAVE'); str(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, 'data'); v.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+function usePlaybackChannel() {
+  try {
+    const session = (navigator as any).audioSession;
+    if (session && session.type !== 'playback') session.type = 'playback';
+  } catch { /* not supported */ }
+  try {
+    if (!keepAlive) {
+      keepAlive = new Audio(silentWavUrl());
+      keepAlive.loop = true;
+      keepAlive.setAttribute('playsinline', '');
+      keepAlive.setAttribute('x-webkit-airplay', 'deny');
+    }
+    if (keepAlive.paused) keepAlive.play().catch(() => {});
+  } catch { /* not supported */ }
+}
+
+/** Call from a tap/click. Creates or wakes the audio engine (iOS only allows this inside a gesture). */
 export function unlockAudio() {
+  usePlaybackChannel();
   try {
     if (!ctx) {
       const AC = window.AudioContext || (window as any).webkitAudioContext;
@@ -28,11 +65,30 @@ export function unlockAudio() {
       fb.connect(delay);
       delay.connect(wet);
       wet.connect(ctx.destination);
+      // A one-sample silent buffer started inside the gesture fully unlocks older iOS.
+      const b = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = b;
+      src.connect(ctx.destination);
+      src.start(0);
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    // iOS also uses a non-standard "interrupted" state (calls, Siri, screen lock).
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
   } catch {
     /* audio unsupported */
   }
+}
+
+/** Stop holding the media channel (so we don't keep the "now playing" state after a sit). */
+export function releaseAudio() {
+  try { keepAlive?.pause(); } catch { /* ignore */ }
+}
+
+// Any tap re-wakes audio that iOS suspended (e.g. after the screen locked or a call came in).
+if (typeof window !== 'undefined') {
+  const wake = () => { if (ctx && ctx.state !== 'running') unlockAudio(); };
+  window.addEventListener('pointerdown', wake, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
 }
 
 function partial(freq: number, gain: number, decay: number, when: number, detune = 0) {

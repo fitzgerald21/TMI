@@ -17,6 +17,7 @@ export function Prefs() {
   }, []);
 
   const testVoice = () => {
+    unlockAudio();
     primeVoice();
     configureVoice({ name: s.voiceName, rate: s.voiceRate, enabled: true });
     speak('Let attention rest on the sensations of the breath at the nose.', { interrupt: true });
@@ -46,7 +47,7 @@ export function Prefs() {
               <input id="pf-rate" type="range" min={0.6} max={1.1} step={0.02} value={s.voiceRate} onChange={(e) => updateSettings({ voiceRate: +e.target.value })} />
             </label>
             <button className="btn small" onClick={testVoice}>Hear a sample</button>
-            <p className="muted small">Voices come from your device. On iPhone, Settings → Accessibility → Spoken Content → Voices lets you download higher-quality voices.</p>
+            <p className="muted small">No sound on iPhone? Turn the volume up with the side buttons while a sit is playing (silent mode shouldn't matter). Voices come from your device. On iPhone, Settings → Accessibility → Spoken Content → Voices lets you download higher-quality voices.</p>
           </>
         ) : (
           <p className="muted">This browser doesn't support speech. Sits will use bells and on-screen text.</p>
