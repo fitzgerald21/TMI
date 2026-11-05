@@ -1,6 +1,6 @@
 // Offline support. Pages: network first, so updates show up right away; fall back to cache offline.
 // Built assets and fonts: cache first (their URLs change when their content does).
-const CACHE = 'lantern-v2';
+const CACHE = 'lantern-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png'];
 
 // Precache the shell plus the hashed JS/CSS that index.html points at, so the app opens offline
@@ -47,7 +47,8 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  if (isFont || url.pathname.includes('/assets/')) {
+  // Voice clips are named by a hash of their text, so a cached clip never goes stale.
+  if (isFont || url.pathname.includes('/assets/') || url.pathname.includes('/voice/')) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => put(req, res))));
     return;
   }

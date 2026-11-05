@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { setState, updateSettings, useStore } from '../lib/store';
 import { bell, setVolume, unlockAudio } from '../lib/audio';
-import { configureVoice, listVoices, primeVoice, speak, voiceSupported } from '../lib/voice';
+import { SAMPLE_LINE } from '../session/script';
+import { configureVoice, isRecordedVoice, listVoices, primeVoice, RECORDED_VOICES, recordedVoiceName, speak, voiceSupported } from '../lib/voice';
 
 export function Prefs() {
   const s = useStore((x) => x.settings);
@@ -20,7 +21,7 @@ export function Prefs() {
     unlockAudio();
     primeVoice();
     configureVoice({ name: s.voiceName, rate: s.voiceRate, enabled: true });
-    speak('Let attention rest on the sensations of the breath at the nose.', { interrupt: true });
+    speak(SAMPLE_LINE, { interrupt: true });
   };
 
   return (
@@ -33,25 +34,33 @@ export function Prefs() {
           <input id="pf-voice" type="checkbox" checked={s.voice} onChange={(e) => updateSettings({ voice: e.target.checked })} />
           <span>Spoken guidance</span>
         </label>
-        {voiceSupported() ? (
-          <>
-            <label className="field" htmlFor="pf-voice-name">
-              <span className="k">Voice</span>
-              <select id="pf-voice-name" value={s.voiceName} onChange={(e) => updateSettings({ voiceName: e.target.value })}>
-                <option value="">Automatic (a calm voice if available)</option>
+        <label className="field" htmlFor="pf-voice-name">
+          <span className="k">Voice</span>
+          <select id="pf-voice-name" value={s.voiceName || recordedVoiceName(RECORDED_VOICES[0]?.id ?? '')} onChange={(e) => updateSettings({ voiceName: e.target.value })}>
+            {RECORDED_VOICES.length > 0 && (
+              <optgroup label="Lantern voices (recorded, work in silent mode)">
+                {RECORDED_VOICES.map((v) => <option key={v.id} value={recordedVoiceName(v.id)}>{v.label}</option>)}
+              </optgroup>
+            )}
+            {voices.length > 0 && (
+              <optgroup label="Your device's voices">
                 {voices.map((v) => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-              </select>
-            </label>
-            <label className="slider" htmlFor="pf-rate">
-              <span>Pace <em>{s.voiceRate.toFixed(2)}×</em></span>
-              <input id="pf-rate" type="range" min={0.6} max={1.1} step={0.02} value={s.voiceRate} onChange={(e) => updateSettings({ voiceRate: +e.target.value })} />
-            </label>
-            <button className="btn small" onClick={testVoice}>Hear a sample</button>
-            <p className="muted small">No sound on iPhone? Turn the volume up with the side buttons while a sit is playing (silent mode shouldn't matter). Voices come from your device. On iPhone, Settings → Accessibility → Spoken Content → Voices lets you download higher-quality voices.</p>
-          </>
-        ) : (
-          <p className="muted">This browser doesn't support speech. Sits will use bells and on-screen text.</p>
+              </optgroup>
+            )}
+          </select>
+        </label>
+        {!isRecordedVoice(s.voiceName) && (
+          <label className="slider" htmlFor="pf-rate">
+            <span>Pace <em>{s.voiceRate.toFixed(2)}×</em></span>
+            <input id="pf-rate" type="range" min={0.6} max={1.1} step={0.02} value={s.voiceRate} onChange={(e) => updateSettings({ voiceRate: +e.target.value })} />
+          </label>
         )}
+        <button className="btn small" onClick={testVoice}>Hear a sample</button>
+        <p className="muted small">
+          {isRecordedVoice(s.voiceName)
+            ? 'Lantern voices are recorded with a neural voice and play even when your phone is on silent. They download once and then work offline.'
+            : "Device voices come from your phone or computer. On iPhone they're muted by silent mode, and Settings → Accessibility → Spoken Content → Voices lets you download better ones."}
+        </p>
       </section>
 
       <section className="pref-group">

@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "build:single": "tsc -b && vite build --mode single",
     "preview": "vite preview",
+    "voice:lines": "sh scripts/voice/collect.sh",
+    "voice": "sh scripts/voice/collect.sh && python3 scripts/voice/generate.py",
     "typecheck": "tsc -b"
   },
   "dependencies": {

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SceneCanvas } from '../visual/SceneCanvas';
 import { newControl, breathsFromLog } from '../visual/scene';
-import { SCAN_REGIONS, type Script } from './script';
+import { DULL_LINE, SCAN_REGIONS, scanLine, scriptLines, type Script } from './script';
 import { bell, bells, chime, tick, unlockAudio, releaseAudio, setVolume } from '../lib/audio';
-import { speak, hush, configureVoice, primeVoice } from '../lib/voice';
+import { speak, hush, configureVoice, primeVoice, preloadLines } from '../lib/voice';
 import { addSession, uid, useStore, updateSettings, type SessionRecord } from '../lib/store';
 import { Prep, type PrepResult } from './Prep';
 import { Review } from './Review';
@@ -31,7 +31,9 @@ export function Session({ script, onExit }: { script: Script; onExit: () => void
   useEffect(() => {
     configureVoice({ name: settings.voiceName, rate: settings.voiceRate, enabled: settings.voice && settings.guidance !== 'bells' });
     setVolume(settings.bellVolume);
-  }, [settings.voiceName, settings.voiceRate, settings.voice, settings.guidance, settings.bellVolume]);
+    // Fetch this sit's recorded lines during prep, so they play instantly and offline.
+    if (settings.voice) preloadLines(scriptLines(script, settings.guidance));
+  }, [settings.voiceName, settings.voiceRate, settings.voice, settings.guidance, settings.bellVolume]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.body.classList.add('in-session');
@@ -241,7 +243,7 @@ function Runner({ script, prep, onFinish, onAbandon }: { script: Script; prep: P
     });
     if (seg.scan && regionIdx !== lastRegion.current) {
       lastRegion.current = regionIdx;
-      if (voiceOn && segT > 8) speak(`Now, ${SCAN_REGIONS[regionIdx].name}.`);
+      if (voiceOn && segT > 8) speak(scanLine(regionIdx));
     }
   }, [elapsed, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -288,7 +290,7 @@ function Runner({ script, prep, onFinish, onAbandon }: { script: Script; prep: P
     ctl.dullAt = nowS();
     setDull((n) => n + 1);
     setShowDull(true);
-    if (voiceOn) speak('Brighten up. Take a few deeper breaths, and sit a little taller.', { interrupt: true });
+    if (voiceOn) speak(DULL_LINE, { interrupt: true });
     window.setTimeout(() => setShowDull(false), 9000);
     poke();
   };

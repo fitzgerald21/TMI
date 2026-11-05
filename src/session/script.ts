@@ -526,3 +526,24 @@ export const SCAN_REGIONS = [
   { name: 'the hands and hips', y: 0.12 },
   { name: 'the legs and feet', y: 0.21 },
 ];
+
+// ------------------------------------------------------------------
+// Lines spoken outside segments, and every line a script can speak
+// ------------------------------------------------------------------
+export const DULL_LINE = 'Brighten up. Take a few deeper breaths, and sit a little taller.';
+export const SAMPLE_LINE = 'Let attention rest on the sensations of the breath at the nose.';
+export const scanLine = (i: number) => `Now, ${SCAN_REGIONS[i].name}.`;
+
+/** Everything a script might say, so recorded clips can be loaded before the sit starts. */
+export function scriptLines(script: Script, guidance: 'full' | 'light' | 'bells'): string[] {
+  if (guidance === 'bells') return [];
+  const out = new Set<string>();
+  for (const seg of script.segments) {
+    const open = guidance === 'full' ? seg.say : seg.short || seg.title;
+    if (open) out.add(open);
+    if (guidance === 'full') seg.cues?.forEach((c) => c.texts.forEach((t) => out.add(t)));
+    if (seg.scan) SCAN_REGIONS.forEach((_, i) => out.add(scanLine(i)));
+  }
+  if (script.segments.some((s) => s.controls.includes('dull'))) out.add(DULL_LINE);
+  return [...out];
+}

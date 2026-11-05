@@ -79,6 +79,11 @@ export function unlockAudio() {
   }
 }
 
+/** The running audio context (after unlockAudio), for other players such as recorded voice. */
+export function audioContext(): AudioContext | null {
+  return ctx;
+}
+
 /** Stop holding the media channel (so we don't keep the "now playing" state after a sit). */
 export function releaseAudio() {
   try { keepAlive?.pause(); } catch { /* ignore */ }
